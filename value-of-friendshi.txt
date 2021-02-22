@@ -1,0 +1,162 @@
+   using System;
+    using System.Collections.Generic;
+    using System.IO;
+    using System.Linq;
+    class Solution
+    {
+
+        static void Main(String[] args)
+        {
+            int t = int.Parse(Console.ReadLine());
+
+            while (t-- > 0)
+            {
+                var tokens_n = Array.ConvertAll(Console.ReadLine().Split(), int.Parse);
+                int n = (tokens_n[0]);
+                int m = (tokens_n[1]);
+
+                var edges = new int[m][];
+
+                for (int a1 = 0; a1 < m; a1++)
+                {
+                    var tokens_x = Array.ConvertAll(Console.ReadLine().Split(), int.Parse);
+                    int x = tokens_x[0];
+                    int y = tokens_x[1];
+                    edges[a1] = new[] { x, y };
+                }
+
+
+
+                var result = Compute(n, edges);
+                Console.WriteLine(result);
+
+            }
+        }
+
+        public class Component
+        {
+            public int Count;
+            public int Root;
+            //public int Edges;
+        }
+
+        public static long Compute(int n, int[][] edges)
+        {
+            var ds = new DisjointSet(n, true);
+
+            foreach(var e in edges)
+                ds.Union(e[0], e[1]);
+
+            var dict = new Dictionary<int, Component>();
+            foreach (var c in ds.Components())
+            {
+                if (ds.GetCount(c) < 2) continue;
+                dict[c] = new Component {Root = c, Count = ds.GetCount(c)};
+            }
+
+            //foreach (var e in edges)
+            //    dict[ds.Find(e[0])].Edges++;
+
+            var list = dict.Values.ToList();
+            list.Sort((a,b) => -a.Count.CompareTo(b.Count));
+
+            long result = 0;
+            long otherFriends = 0;
+            long usedEdges = 0;
+            foreach (var c in list)
+            {
+                long matches = c.Count - 1;
+                result += matches * otherFriends + SumMatches(matches);
+                otherFriends += (long) c.Count * (c.Count - 1);
+                usedEdges += matches;
+            }
+
+            // Add redundant edges
+            result += otherFriends * (edges.Length - usedEdges);
+            return result;
+        }
+
+        public static long SumMatches(long matches)
+        {
+            long sum = 0;
+            for (long i = 1; i <= matches; i++)
+                sum += i * i + i;
+            return sum;
+        }
+
+    }
+
+    /// <summary>
+    /// Works with one-base or zero-based.
+    /// </summary>
+    public class DisjointSet
+    {
+        private readonly int[] _ds;
+        private readonly int[] _counts;
+        private int _components;
+
+        public int Count => _components;
+
+        public DisjointSet(int size, bool onesBased = false)
+        {
+            _ds = new int[size + 1];
+            _counts = new int[size + 1];
+            _components = size;
+
+            for (int i = 0; i <= size; i++)
+            {
+                _ds[i] = i;
+                _counts[i] = 1;
+            }
+
+            if (onesBased)
+                _ds[0] = size;
+            else
+                _ds[size] = 0;
+        }
+
+        public bool Union(int x, int y)
+        {
+            var rx = Find(x);
+            var ry = Find(y);
+            if (rx == ry) return false;
+
+            if (_counts[ry] > _counts[rx])
+            {
+                _ds[rx] = ry;
+                _counts[ry] += _counts[rx];
+            }
+            else
+            {
+                _ds[ry] = rx;
+                _counts[rx] += _counts[ry];
+            }
+            _components--;
+            return true;
+        }
+
+        public int Find(int x)
+        {
+            var root = _ds[x];
+            return root == x
+                ? x
+                : (_ds[x] = Find(root));
+        }
+
+
+        public int GetCount(int x)
+        {
+            var root = Find(x);
+            return _counts[root];
+        }
+
+        public IEnumerable<int> Components()
+        {
+            for (int i = 0; i < _ds.Length; i++)
+            {
+                if (_ds[i] == i)
+                    yield return i;
+            }
+        }
+
+    }
